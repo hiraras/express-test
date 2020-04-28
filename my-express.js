@@ -1,42 +1,57 @@
 
+const http = require('http');
+
 function myExpress() {
-  const http = require('http');
-  const map = new Map();
-  let key = 0;
-  return {
-    listen: function(port, callback) {
-      http.createServer(function(req, res) {
-        const path = req.url.split('?')[0];
-        const keys = [...map.keys()];
-        const execKeys = keys.filter(item => typeof item === 'number' || new RegExp(item).test(path));
-        const execFns = execKeys.map(item => map.get(item)).flat();
-        execFnList(execFns, req, res);
-      }).listen(port, callback);
-    },
-    use: function(arg1, ...args) {
-      if (typeof arg1 === 'string') {
-        map.set(arg1 + '/.*', args);
-      } else if (typeof arg1 === 'function') {
-        map.set(key, arg1);
-        key ++;
-      } else {
-        throw new Error('param fault');
-      }
-      args.forEach(function(item) {
-        if (typeof item === 'function') {
-          map.set(key, item);
-          key ++;
-        } else {
-          throw new Error('param fault');
-        }
-      });
-    },
-    get: function(path, ...args) {
-      map.set(path, args);
-    },
-    post: function() {
-      map.set(path, args);
+  return new LikeExpress();
+}
+
+class LikeExpress {
+  constructor() {
+    this.map = new Map();
+    this.key = 0;
+  }
+
+  getFnList = (req) => {
+    const path = req.url.split('?')[0];
+    const keys = [...this.map.keys()];
+    const execKeys = keys.filter(item => typeof item === 'number' || new RegExp(item).test(path));
+    return execKeys.map(item => this.map.get(item)).flat();
+  }
+
+  callback = (req, res) => {
+    console.log(this);
+    const execFns = this.getFnList(req);
+    res.json = (data) => {
+      res.setHeader('Content-type', 'application/json');
+      res.end(JSON.stringify(data));
     }
+    execFnList(execFns, req, res);
+  }
+
+  listen = (port, callback) => {
+    const server = http.createServer(this.callback.bind(this));
+    server.listen(port, callback);
+  }
+
+  use = (arg1, ...args) => {
+    if (typeof arg1 === 'string') {
+      this.map.set(arg1 + '/.*', args);
+    } else if (typeof arg1 === 'function') {
+      this.map.set(this.key, arg1);
+      this.key ++;
+    }
+    args.forEach((item) => {
+      this.map.set(this.key, item);
+      this.key ++;
+    });
+  }
+
+  get = (path, ...args) => {
+    this.map.set(path, args);
+  }
+  
+  post = (path, ...args) => {
+    this.map.set(path, args);
   }
 }
 
@@ -88,4 +103,15 @@ function execFnList(fns, req, res) {
     });
   }
   fns[0] && f(0);
+}
+
+// 教程的实现
+function execFnList2(fns, req, res) {
+  const next = () => {
+    const middleware = fns.shift();
+    if (middleware) {
+      middleware(req, res, next);
+    }
+  }
+  next();
 }
