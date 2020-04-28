@@ -11,20 +11,23 @@ class LikeExpress {
     this.key = 0;
   }
 
-  getFnList = (req) => {
+  getFnList = (req, res) => {
     const path = req.url.split('?')[0];
+    if (path.includes('favicon.ico')) {
+      res.json('not exist');
+      return [];
+    }
     const keys = [...this.map.keys()];
     const execKeys = keys.filter(item => typeof item === 'number' || new RegExp(item).test(path));
     return execKeys.map(item => this.map.get(item)).flat();
   }
 
   callback = (req, res) => {
-    console.log(this);
-    const execFns = this.getFnList(req);
     res.json = (data) => {
       res.setHeader('Content-type', 'application/json');
       res.end(JSON.stringify(data));
     }
+    const execFns = this.getFnList(req, res);
     execFnList(execFns, req, res);
   }
 
@@ -49,50 +52,11 @@ class LikeExpress {
   get = (path, ...args) => {
     this.map.set(path, args);
   }
-  
+
   post = (path, ...args) => {
     this.map.set(path, args);
   }
 }
-
-const app = myExpress();
-app.use(function(req, res, next) {
-  console.log(1);
-  next();
-});
-app.use(function(req, res, next) {
-  setTimeout(function() {
-    console.log('settimeout');
-    next();
-  }, 1000);
-});
-app.use('/test', function(req, res, next) {
-  console.log('test use');
-  next();
-});
-
-app.use(function(req, res, next) {
-  console.log(3);
-  next();
-});
-
-app.use(function(req, res, next) {
-  console.log(4);
-  next();
-});
-
-app.get('/test/get', function(req, res, next) {
-  console.log('test get');
-  res.end('test get end');
-});
-
-app.use(function(req, res, next) {
-  res.end('end');
-});
-
-app.listen(3000, function() {
-  console.log('server listen of 3000');
-});
 
 module.exports = myExpress;
 
