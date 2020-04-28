@@ -8,14 +8,14 @@ function myExpress() {
       http.createServer(function(req, res) {
         const path = req.url.split('?')[0];
         const keys = [...map.keys()];
-        const execKeys = keys.filter(item => typeof item === 'number' || path === item);
-        const execFns = flat(execKeys.map(item => map.get(item)));
+        const execKeys = keys.filter(item => typeof item === 'number' || new RegExp(item).test(path));
+        const execFns = execKeys.map(item => map.get(item)).flat();
         execFnList(execFns, req, res);
       }).listen(port, callback);
     },
     use: function(arg1, ...args) {
       if (typeof arg1 === 'string') {
-        map.set(arg1, args);
+        map.set(arg1 + '/.*', args);
       } else if (typeof arg1 === 'function') {
         map.set(key, arg1);
         key ++;
@@ -30,6 +30,12 @@ function myExpress() {
           throw new Error('param fault');
         }
       });
+    },
+    get: function(path, ...args) {
+      map.set(path, args);
+    },
+    post: function() {
+      map.set(path, args);
     }
   }
 }
@@ -46,7 +52,7 @@ app.use(function(req, res, next) {
   }, 1000);
 });
 app.use('/test', function(req, res, next) {
-  console.log('test');
+  console.log('test use');
   next();
 });
 
@@ -60,6 +66,11 @@ app.use(function(req, res, next) {
   next();
 });
 
+app.get('/test/get', function(req, res, next) {
+  console.log('test get');
+  res.end('test get end');
+});
+
 app.use(function(req, res, next) {
   res.end('end');
 });
@@ -69,18 +80,6 @@ app.listen(3000, function() {
 });
 
 module.exports = myExpress;
-
-function flat(arr) {
-  const result = [];
-  for (let i = 0; i < arr.length; i ++) {
-    if (Array.isArray(arr[i])) {
-      result.push(...arr[i]);
-    } else {
-      result.push(arr[i]);
-    }
-  }
-  return result;
-}
 
 function execFnList(fns, req, res) {
   function f(num) {
